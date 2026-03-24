@@ -1,0 +1,38 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function userRole() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
+    }
+
+    function userExamClass() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.examClass;
+    }
+
+    match /users/{uid} {
+      allow read: if isAuthenticated() && request.auth.uid == uid;
+      allow create: if isAuthenticated() && request.auth.uid == uid;
+      allow update: if isAuthenticated() && request.auth.uid == uid;
+      allow delete: if false;
+    }
+
+    match /access_codes/{code} {
+      allow read, write: if false;
+    }
+
+    match /photos/{photoId} {
+      allow read: if isAuthenticated() && resource.data.examClass == userExamClass();
+      allow create: if isAuthenticated() && (userRole() == 'mentor' || userRole() == 'photographer');
+      allow update, delete: if false;
+    }
+
+    match /livestream/{docId} {
+      allow read: if isAuthenticated();
+      allow write: if false;
+    }
+  }
+}
