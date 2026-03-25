@@ -5,6 +5,7 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 
 import '../data/auth_repository.dart';
+import '../../../shared/widgets/mobile_design_frame.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -97,52 +98,28 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
     // Slightly taller than the design per request.
     const inputRect = Rect.fromLTWH(174, 1300, 992, 240);
     const buttonRect = Rect.fromLTWH(174, 1568, 992, 150);
-    // Error text should appear inside the card, between input and button.
-    const errorRect = Rect.fromLTWH(174, 1548, 992, 42);
-    // Move title higher so it never overlaps the input (fixes screenshot issue).
-    const titleRect = Rect.fromLTWH(174, 1140, 992, 86);
-    // Place the real logo above the input (UI recreation, not SVG pattern).
-    const logoRect = Rect.fromLTWH(244, 1178, 846, 250);
+    // Label inside the green frame (above the input).
+    const labelRect = Rect.fromLTWH(174, 1218, 992, 70);
+    // Title + logo should be ABOVE the green card (see Image 1).
+    // Give the title more vertical room so it never clips.
+    const titleRect = Rect.fromLTWH(110, 740, 1113, 320);
+    // Logo should be at the very top.
+    const logoRect = Rect.fromLTWH(180, 180, 973, 520);
 
-    return Scaffold(
-      backgroundColor: Colors.black,
-      body: LayoutBuilder(
-        builder: (context, constraints) {
-          final w = constraints.maxWidth;
-          final h = constraints.maxHeight;
-          final scale = (w / designW < h / designH) ? (w / designW) : (h / designH);
-          final renderW = designW * scale;
-          final renderH = designH * scale;
-          final dx = (w - renderW) / 2;
-          final dy = (h - renderH) / 2;
-
-          Rect map(Rect r) => Rect.fromLTWH(
-                dx + r.left * scale,
-                dy + r.top * scale,
-                r.width * scale,
-                r.height * scale,
-              );
-
-          final input = map(inputRect);
-          final button = map(buttonRect);
-          final error = map(errorRect);
-          final card = map(cardRect);
-          final title = map(titleRect);
-          final logo = map(logoRect);
+    return MobileDesignFrame(
+      designSize: const Size(designW, designH),
+      children: [
+        (m) {
+          final scale = m.scale;
+          final input = m.map(inputRect);
+          final button = m.map(buttonRect);
+          final card = m.map(cardRect);
+          final title = m.map(titleRect);
+          final logo = m.map(logoRect);
+          final label = m.map(labelRect);
 
           return Stack(
             children: [
-              Positioned.fill(
-                child: CustomPaint(
-                  painter: _MobileMainBackgroundPainter(
-                    scale: scale,
-                    dx: dx,
-                    dy: dy,
-                    designW: designW,
-                    designH: designH,
-                  ),
-                ),
-              ),
 
               // Card (green panel with black stroke).
               Positioned.fromRect(
@@ -159,44 +136,56 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 ),
               ),
 
-              // Logo (real `logo.svg`) positioned like the design and clipped to the card.
+              // Logo at the top.
               Positioned.fromRect(
-                rect: card,
+                rect: logo,
                 child: IgnorePointer(
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(68 * scale),
-                    child: Stack(
-                      children: [
-                        Positioned(
-                          left: logo.left - card.left,
-                          top: logo.top - card.top,
-                          width: logo.width,
-                          height: logo.height,
-                          child: SvgPicture.asset(
-                            'assets/design/logo.svg',
-                            fit: BoxFit.contain,
-                          ),
+                  child: SvgPicture.asset(
+                    'assets/design/logo.svg',
+                    fit: BoxFit.contain,
+                  ),
+                ),
+              ),
+
+              // Title text (big neon) above the card.
+              Positioned.fromRect(
+                rect: title,
+                child: IgnorePointer(
+                  child: Center(
+                    child: OverflowBox(
+                      minHeight: 0,
+                      maxHeight: double.infinity,
+                      alignment: Alignment.center,
+                      child: Text(
+                        'DIPLOMA UITREIKING',
+                        textAlign: TextAlign.center,
+                        softWrap: true,
+                        style: TextStyle(
+                          color: const Color(0xFF8FE508),
+                          fontSize: 130 * scale,
+                          fontWeight: FontWeight.w800,
+                          height: 1,
+                          letterSpacing: 1.0 * scale,
                         ),
-                      ],
+                      ),
                     ),
                   ),
                 ),
               ),
 
-              // Title text (missing before): centered, black, inside the card.
+              // Label inside the login card above the input.
               Positioned.fromRect(
-                rect: title,
+                rect: label,
                 child: IgnorePointer(
                   child: Center(
                     child: Text(
-                      'DIPLOMA UITREIKING',
+                      'Voer de toegangscode in:',
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         color: Colors.black,
-                        fontSize: 72 * scale,
-                        fontWeight: FontWeight.w800,
+                        fontSize: 44 * scale,
+                        fontWeight: FontWeight.w700,
                         height: 1,
-                        letterSpacing: 1.2 * scale,
                       ),
                     ),
                   ),
@@ -222,6 +211,8 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         enabled: !_loading,
                         autofocus: true,
                         textAlign: TextAlign.center,
+                        textAlignVertical: TextAlignVertical.center,
+                        maxLines: 1,
                         cursorColor: Colors.black,
                         style: TextStyle(
                           color: Colors.black,
@@ -239,7 +230,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           filled: false,
                           fillColor: Colors.transparent,
                           isDense: true,
-                          contentPadding: EdgeInsets.zero,
+                          isCollapsed: true,
+                          // Keep text visually centered within the outlined box.
+                          // Horizontal padding is zero (design centers text); vertical is tuned.
+                          contentPadding: EdgeInsets.symmetric(vertical: input.height * 0.28),
                           hintText: '...',
                           hintStyle: TextStyle(
                             color: Colors.black,
@@ -254,35 +248,43 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 ),
               ),
 
-              // Error message (fits the design card; does not reflow layout).
-              Positioned.fromRect(
-                rect: error,
+              // Error message anchored at bottom of the screen (high visibility).
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: 18,
                 child: IgnorePointer(
                   child: Center(
                     child: AnimatedSwitcher(
-                      duration: const Duration(milliseconds: 160),
+                      duration: const Duration(milliseconds: 180),
                       switchInCurve: Curves.easeOut,
                       switchOutCurve: Curves.easeIn,
                       child: (_errorText == null || _errorText!.trim().isEmpty)
                           ? const SizedBox.shrink()
                           : Container(
                               key: ValueKey(_errorText),
+                              constraints: const BoxConstraints(maxWidth: 860),
+                              margin: const EdgeInsets.symmetric(horizontal: 16),
                               padding: EdgeInsets.symmetric(
                                 horizontal: 18 * scale,
-                                vertical: 8 * scale,
+                                vertical: 12 * scale,
                               ),
                               decoration: BoxDecoration(
-                                color: Colors.black.withValues(alpha: 0.22),
-                                borderRadius: BorderRadius.circular(14 * scale),
+                                color: Colors.black.withValues(alpha: 0.62),
+                                borderRadius: BorderRadius.circular(16 * scale),
+                                border: Border.all(
+                                  color: const Color(0xFF8FE508).withValues(alpha: 0.65),
+                                  width: 2 * scale,
+                                ),
                               ),
                               child: Text(
                                 _errorText!,
                                 textAlign: TextAlign.center,
                                 style: TextStyle(
-                                  color: Colors.black,
-                                  fontSize: 26 * scale,
-                                  fontWeight: FontWeight.w700,
-                                  height: 1.1,
+                                  color: const Color(0xFF8FE508),
+                                  fontSize: 30 * scale,
+                                  fontWeight: FontWeight.w800,
+                                  height: 1.15,
                                 ),
                               ),
                             ),
@@ -345,168 +347,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
             ],
           );
         },
-      ),
+      ],
     );
-  }
-}
-
-class _MobileMainBackgroundPainter extends CustomPainter {
-  _MobileMainBackgroundPainter({
-    required this.scale,
-    required this.dx,
-    required this.dy,
-    required this.designW,
-    required this.designH,
-  });
-
-  final double scale;
-  final double dx;
-  final double dy;
-  final double designW;
-  final double designH;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    // Paint in design-space coordinates centered on the screen (dx/dy).
-    canvas.save();
-    canvas.translate(dx, dy);
-
-    final rect = Rect.fromLTWH(0, 0, designW * scale, designH * scale);
-    final paint = Paint()
-      ..shader = const LinearGradient(
-        begin: Alignment.topCenter,
-        end: Alignment.bottomCenter,
-        colors: [
-          Colors.black,
-          Color(0xFF263E00),
-        ],
-      ).createShader(rect);
-    canvas.drawRect(rect, paint);
-
-    // Decorative neon squares (from the SVG).
-    final strokePaint = Paint()
-      ..style = PaintingStyle.stroke
-      ..color = const Color(0xFF8FE508).withValues(alpha: 0.4)
-      ..strokeWidth = 3 * scale;
-
-    final glowPaint = Paint()
-      ..style = PaintingStyle.stroke
-      ..color = const Color(0xFF8FE508).withValues(alpha: 0.22)
-      ..strokeWidth = 14 * scale
-      ..maskFilter = MaskFilter.blur(BlurStyle.normal, 18 * scale);
-
-    final softGlowPaint = Paint()
-      ..style = PaintingStyle.stroke
-      ..color = const Color(0xFF8FE508).withValues(alpha: 0.10)
-      ..strokeWidth = 28 * scale
-      ..maskFilter = MaskFilter.blur(BlurStyle.normal, 30 * scale);
-
-    for (final r in _designSquares()) {
-      final scaled = Rect.fromLTWH(
-        r.left * scale,
-        r.top * scale,
-        r.width * scale,
-        r.height * scale,
-      );
-      canvas.drawRRect(RRect.fromRectAndRadius(scaled, const Radius.circular(0)), softGlowPaint);
-      canvas.drawRRect(RRect.fromRectAndRadius(scaled, const Radius.circular(0)), glowPaint);
-      canvas.drawRRect(RRect.fromRectAndRadius(scaled, const Radius.circular(0)), strokePaint);
-    }
-
-    canvas.restore();
-  }
-
-  @override
-  bool shouldRepaint(covariant _MobileMainBackgroundPainter oldDelegate) {
-    return oldDelegate.scale != scale;
-  }
-
-  // Extracted from `assets/design/Mobile - Main.svg` (stroke #8FE508 @ 0.4).
-  // Coordinates are in the design artboard space (1333x2457).
-  List<Rect> _designSquares() {
-    // Base (non-transformed) rects:
-    const base = <Rect>[
-      Rect.fromLTWH(47.5, 2307.5, 120, 139),
-      Rect.fromLTWH(123.5, 2258.5, 120, 139),
-      Rect.fromLTWH(199.5, 2209.5, 120, 139),
-      Rect.fromLTWH(138.5, 2154.5, 120, 139),
-      Rect.fromLTWH(661.5, 2067.5, 120, 139),
-      Rect.fromLTWH(765.5, 2091.5, 120, 139),
-      Rect.fromLTWH(820.5, 2133.5, 120, 139),
-      Rect.fromLTWH(679.5, 2182.5, 120, 139),
-      Rect.fromLTWH(488.5, 2248.5, 120, 139),
-      Rect.fromLTWH(1120.5, 2337.5, 120, 139),
-      Rect.fromLTWH(1151.5, 2248.5, 120, 139),
-      Rect.fromLTWH(1050.5, 2215.5, 120, 139),
-      Rect.fromLTWH(1130.5, 1910.5, 120, 139),
-      Rect.fromLTWH(1050.5, 1849.5, 120, 139),
-      Rect.fromLTWH(1181.5, 1786.5, 120, 139),
-      Rect.fromLTWH(1151.5, 1669.5, 120, 139),
-      Rect.fromLTWH(395.5, 1873.5, 120, 139),
-      Rect.fromLTWH(322.5, 1920.5, 120, 139),
-      Rect.fromLTWH(365.5, 2040.5, 120, 139),
-      Rect.fromLTWH(97.5, 1939.5, 120, 139),
-      Rect.fromLTWH(975.5, 2032.5, 120, 139),
-    ];
-
-    // Transformed rects from SVG matrices.
-    // matrix(-1 0 0 1 tx ty): x = tx - (x + w), y = ty + y
-    Rect flipX(double x, double y, double w, double h, double tx, double ty) =>
-        Rect.fromLTWH(tx - (x + w), ty + y, w, h);
-    // matrix(1 0 0 -1 tx ty): x = tx + x, y = ty - (y + h)
-    Rect flipY(double x, double y, double w, double h, double tx, double ty) =>
-        Rect.fromLTWH(tx + x, ty - (y + h), w, h);
-
-    const x = -1.5, y = 1.5, w = 120.0, h = 139.0;
-    const x2 = 1.5, y2 = -1.5;
-
-    final transformed = <Rect>[
-      flipX(x, y, w, h, 1318, 1426),
-      flipX(x, y, w, h, 1242, 1377),
-      flipX(x, y, w, h, 1166, 1328),
-      flipX(x, y, w, h, 1227, 1273),
-      flipX(x, y, w, h, 704, 1186),
-      flipX(x, y, w, h, 600, 1210),
-      flipX(x, y, w, h, 545, 1252),
-      flipX(x, y, w, h, 686, 1301),
-      flipX(x, y, w, h, 877, 1367),
-      flipX(x, y, w, h, 245, 1456),
-      flipX(x, y, w, h, 214, 1367),
-      flipX(x, y, w, h, 315, 1334),
-      flipX(x, y, w, h, 235, 1029),
-      flipX(x, y, w, h, 315, 968),
-      flipX(x, y, w, h, 184, 905),
-      flipX(x, y, w, h, 214, 788),
-      flipX(x, y, w, h, 970, 992),
-      flipX(x, y, w, h, 1043, 1039),
-      flipX(x, y, w, h, 1000, 1159),
-      flipX(x, y, w, h, 1268, 1058),
-      flipX(x, y, w, h, 390, 1151),
-
-      // flipY group (top decorative squares)
-      flipY(x2, y2, w, h, 61, 147),
-      flipY(x2, y2, w, h, 137, 196),
-      flipY(x2, y2, w, h, 213, 245),
-      flipY(x2, y2, w, h, 152, 300),
-      flipY(x2, y2, w, h, 675, 387),
-      flipY(x2, y2, w, h, 779, 363),
-      flipY(x2, y2, w, h, 834, 321),
-      flipY(x2, y2, w, h, 693, 272),
-      flipY(x2, y2, w, h, 502, 206),
-      flipY(x2, y2, w, h, 1134, 117),
-      flipY(x2, y2, w, h, 1165, 206),
-      flipY(x2, y2, w, h, 1064, 239),
-      flipY(x2, y2, w, h, 1144, 544),
-      flipY(x2, y2, w, h, 1064, 605),
-      flipY(x2, y2, w, h, 1195, 668),
-      flipY(x2, y2, w, h, 1165, 785),
-      flipY(x2, y2, w, h, 409, 581),
-      flipY(x2, y2, w, h, 336, 534),
-      flipY(x2, y2, w, h, 379, 414),
-      flipY(x2, y2, w, h, 111, 515),
-      flipY(x2, y2, w, h, 989, 422),
-    ];
-
-    return [...base, ...transformed];
   }
 }

@@ -1,14 +1,17 @@
 import 'dart:async';
 
-import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../features/auth/data/auth_repository.dart';
 import '../../features/auth/presentation/login_screen.dart';
 import '../../features/gallery/presentation/photo_gallery_screen.dart';
+import '../../features/gallery/presentation/photo_details_screen.dart';
 import '../../features/home/presentation/home_screen.dart';
 import '../../features/livestream/presentation/livestream_screen.dart';
+import '../../features/yearbook/presentation/yearbook_details_screen.dart';
+import '../../features/yearbook/presentation/yearbook_screen.dart';
 
 final appRouterProvider = Provider<GoRouter>((ref) {
   return GoRouter(
@@ -32,23 +35,84 @@ final appRouterProvider = Provider<GoRouter>((ref) {
     routes: [
       GoRoute(
         path: '/login',
-        builder: (context, state) => const LoginScreen(),
+        pageBuilder: (context, state) => _fadeSlidePage(
+          key: state.pageKey,
+          child: const LoginScreen(),
+        ),
       ),
       GoRoute(
         path: '/home',
-        builder: (context, state) => const HomeScreen(),
+        pageBuilder: (context, state) => _fadeSlidePage(
+          key: state.pageKey,
+          child: const HomeScreen(),
+        ),
       ),
       GoRoute(
         path: '/photos',
-        builder: (context, state) => const PhotoGalleryScreen(),
+        pageBuilder: (context, state) => _fadeSlidePage(
+          key: state.pageKey,
+          child: const PhotoGalleryScreen(),
+        ),
+      ),
+      GoRoute(
+        path: '/photos/details/:id',
+        pageBuilder: (context, state) => _fadeSlidePage(
+          key: state.pageKey,
+          child: PhotoDetailsScreen(
+            photoId: state.pathParameters['id'] ?? '',
+          ),
+        ),
       ),
       GoRoute(
         path: '/livestream',
-        builder: (context, state) => const LivestreamScreen(),
+        pageBuilder: (context, state) => _fadeSlidePage(
+          key: state.pageKey,
+          child: const LivestreamScreen(),
+        ),
+      ),
+      GoRoute(
+        path: '/jaarboek',
+        pageBuilder: (context, state) => _fadeSlidePage(
+          key: state.pageKey,
+          child: const YearbookScreen(),
+        ),
+      ),
+      GoRoute(
+        path: '/jaarboek/details/:id',
+        pageBuilder: (context, state) => _fadeSlidePage(
+          key: state.pageKey,
+          child: YearbookDetailsScreen(
+            studentId: state.pathParameters['id'] ?? '',
+          ),
+        ),
       ),
     ],
   );
 });
+
+Page<void> _fadeSlidePage({
+  required LocalKey key,
+  required Widget child,
+}) {
+  return CustomTransitionPage<void>(
+    key: key,
+    transitionDuration: const Duration(milliseconds: 220),
+    reverseTransitionDuration: const Duration(milliseconds: 180),
+    child: child,
+    transitionsBuilder: (context, animation, secondaryAnimation, child) {
+      final fade = CurvedAnimation(parent: animation, curve: Curves.easeOutCubic);
+      final slide = Tween<Offset>(
+        begin: const Offset(0, 0.02),
+        end: Offset.zero,
+      ).chain(CurveTween(curve: Curves.easeOutCubic)).animate(animation);
+
+      return FadeTransition(
+        opacity: fade,
+        child: SlideTransition(position: slide, child: child),
+      );
+    },
+  );
+}
 
 class GoRouterRefreshStream extends ChangeNotifier {
   GoRouterRefreshStream(Stream<dynamic> stream) {
