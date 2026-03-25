@@ -27,7 +27,6 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       if (!isLoggedIn && !onLogin) return '/login';
       if (isLoggedIn && onLogin) return '/home';
 
-      // Photo uploads are disabled (Firebase Storage removed).
       if (state.matchedLocation == '/photos/upload') return '/photos';
 
       return null;
