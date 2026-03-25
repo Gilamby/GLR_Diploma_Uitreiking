@@ -1,9 +1,9 @@
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
 import Header from '../components/Header';
-import { fotos as initialFotos } from '../data/mockData';
 import { useAuth } from '../context/AuthContext';
+import { api } from '../lib/api';
 
 function DownloadIcon() {
   return (
@@ -25,7 +25,31 @@ function HeartIcon({ filled }) {
 export default function Photos() {
   const navigate = useNavigate();
   const { isAdmin } = useAuth();
-  const [fotos, setFotos] = useState(initialFotos);
+  const [fotos, setFotos] = useState([]);
+  const [classes, setClasses] = useState([]);
+  const [selectedKlas, setSelectedKlas] = useState('');
+  const [error, setError] = useState('');
+
+  const visibleFotos = useMemo(() => {
+    if (!selectedKlas) return fotos;
+    return fotos.filter(f => f.klas === selectedKlas);
+  }, [fotos, selectedKlas]);
+
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        const [cls, ph] = await Promise.all([api.classes(), api.photos()]);
+        if (!alive) return;
+        setClasses(cls.classes || []);
+        setFotos(ph.photos || []);
+      } catch (e) {
+        if (!alive) return;
+        setError(e?.message || "Kon foto's niet laden.");
+      }
+    })();
+    return () => { alive = false; };
+  }, []);
 
   function toggleLike(id) {
     setFotos(f => f.map(foto => foto.id === id ? { ...foto, geliked: !foto.geliked } : foto));
@@ -49,7 +73,36 @@ export default function Photos() {
       />
 
       <div style={{ padding: '0 16px 24px', display: 'flex', flexDirection: 'column', gap: 20 }}>
-        {fotos.map((foto, i) => (
+        {/* Filter */}
+        <div className="card" style={{ padding: 12, display: 'flex', gap: 10, alignItems: 'center' }}>
+          <span style={{ color: 'var(--text-dim)', fontSize: 13, fontWeight: 600 }}>Klas</span>
+          <select
+            value={selectedKlas}
+            onChange={(e) => setSelectedKlas(e.target.value)}
+            style={{
+              flex: 1,
+              background: 'rgba(0,60,0,0.4)',
+              border: '1.5px solid var(--green-border)',
+              borderRadius: 8,
+              color: 'var(--green)',
+              fontFamily: 'var(--font-main)',
+              fontSize: 14,
+              padding: '10px 12px',
+              outline: 'none',
+            }}
+          >
+            <option value="">Alle klassen</option>
+            {classes.map(c => (
+              <option key={c.id} value={c.name}>{c.name}</option>
+            ))}
+          </select>
+        </div>
+
+        {error && (
+          <p style={{ color: 'var(--text-dim)', textAlign: 'center' }}>{error}</p>
+        )}
+
+        {visibleFotos.map((foto, i) => (
           <div
             key={foto.id}
             className="card"
@@ -127,7 +180,7 @@ export default function Photos() {
         ))}
 
         {/* Map card */}
-        <div className="card" style={{ overflow: 'hidden', animation: `fadeUp 0.4s ease ${fotos.length * 0.07}s both` }}>
+        <div className="card" style={{ overflow: 'hidden', animation: `fadeUp 0.4s ease ${visibleFotos.length * 0.07}s both` }}>
           <div style={{ padding: '14px 16px', borderBottom: '1px solid var(--green-border)' }}>
             <p style={{ fontWeight: 600, fontSize: 15 }}>Grafisch Lyceum Rotterdam</p>
             <p style={{ color: 'var(--text-dim)', fontSize: 13 }}>Heer Bokelweg 255, 3032 AA Rotterdam</p>

@@ -1,19 +1,46 @@
+import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
 import Header from '../components/Header';
-import { students } from '../data/mockData';
+import { api } from '../lib/api';
 
 export default function YearbookDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const student = students.find(s => s.id === Number(id));
+  const [student, setStudent] = useState(null);
+  const [error, setError] = useState('');
 
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        const res = await api.student(id);
+        if (!alive) return;
+        setStudent(res.student);
+      } catch (e) {
+        if (!alive) return;
+        setError(e?.message || 'Leerling niet gevonden.');
+      }
+    })();
+    return () => { alive = false; };
+  }, [id]);
+
+  if (error) {
+    return (
+      <Layout>
+        <Header showBack />
+        <div style={{ padding: 32, textAlign: 'center' }}>
+          <p style={{ color: 'var(--text-dim)' }}>{error}</p>
+        </div>
+      </Layout>
+    );
+  }
   if (!student) {
     return (
       <Layout>
         <Header showBack />
         <div style={{ padding: 32, textAlign: 'center' }}>
-          <p style={{ color: 'var(--text-dim)' }}>Leerling niet gevonden.</p>
+          <p style={{ color: 'var(--text-dim)' }}>Laden...</p>
         </div>
       </Layout>
     );

@@ -11,12 +11,12 @@ export default function Login() {
   const { login } = useAuth();
   const navigate = useNavigate();
 
-  function handleLogin() {
+  async function handleLogin() {
     if (!code.trim()) return;
-    const ok = login(code);
-    if (ok) {
+    try {
+      await login(code);
       navigate('/home');
-    } else {
+    } catch {
       setError('Ongeldige toegangscode. Probeer opnieuw.');
       setShake(true);
       setTimeout(() => setShake(false), 500);

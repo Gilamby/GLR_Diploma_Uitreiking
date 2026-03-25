@@ -1,12 +1,29 @@
-import { useState, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
 import Header from '../components/Header';
-import { students } from '../data/mockData';
+import { api } from '../lib/api';
 
 export default function Yearbook() {
   const navigate = useNavigate();
   const [query, setQuery] = useState('');
+  const [students, setStudents] = useState([]);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        const res = await api.students();
+        if (!alive) return;
+        setStudents(res.students || []);
+      } catch (e) {
+        if (!alive) return;
+        setError(e?.message || 'Kon jaarboek niet laden.');
+      }
+    })();
+    return () => { alive = false; };
+  }, []);
 
   const filtered = useMemo(() => {
     if (!query.trim()) return students;
@@ -14,13 +31,16 @@ export default function Yearbook() {
     return students.filter(s =>
       s.naam.toLowerCase().includes(q) || s.klas.toLowerCase().includes(q)
     );
-  }, [query]);
+  }, [query, students]);
 
   return (
     <Layout>
       <Header showBack={false} />
 
       <div style={{ padding: '0 16px 24px', display: 'flex', flexDirection: 'column', gap: 16 }}>
+        {error && (
+          <p style={{ color: 'var(--text-dim)', textAlign: 'center' }}>{error}</p>
+        )}
         {/* Search bar */}
         <div style={{
           display: 'flex',

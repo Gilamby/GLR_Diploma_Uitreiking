@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
 import Header from '../components/Header';
 import { useAuth } from '../context/AuthContext';
+import { api } from '../lib/api';
 
 export default function PhotoUpload() {
   const navigate = useNavigate();
@@ -14,6 +15,8 @@ export default function PhotoUpload() {
   const [klas, setKlas] = useState('BEROEPS2');
   const [uploaded, setUploaded] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [file, setFile] = useState(null);
 
   // Redirect non-admins
   if (!isAdmin) {
@@ -32,32 +35,41 @@ export default function PhotoUpload() {
   function handleFileChange(e) {
     const file = e.target.files[0];
     if (!file) return;
+    setFile(file);
     const reader = new FileReader();
     reader.onload = (ev) => setPreview(ev.target.result);
     reader.readAsDataURL(file);
     setUploaded(false);
+    setError('');
   }
 
   function handleDrop(e) {
     e.preventDefault();
     const file = e.dataTransfer.files[0];
     if (!file) return;
+    setFile(file);
     const reader = new FileReader();
     reader.onload = (ev) => setPreview(ev.target.result);
     reader.readAsDataURL(file);
     setUploaded(false);
+    setError('');
   }
 
-  function handleSubmit() {
-    if (!preview || !titel.trim()) return;
+  async function handleSubmit() {
+    if (!file || !preview || !titel.trim()) return;
     setLoading(true);
-    // Simulate upload (replace with real fetch to your PHP backend)
-    setTimeout(() => {
+    try {
+      await api.uploadPhoto({ file, titel, klas });
       setLoading(false);
       setUploaded(true);
       setPreview(null);
       setTitel('');
-    }, 1500);
+      setFile(null);
+      setError('');
+    } catch (e) {
+      setLoading(false);
+      setError(e?.message || 'Uploaden mislukt.');
+    }
   }
 
   return (
@@ -152,15 +164,28 @@ export default function PhotoUpload() {
         {/* Submit */}
         <button
           onClick={handleSubmit}
-          disabled={!preview || !titel.trim() || loading}
+          disabled={!preview || !titel.trim() || !file || loading}
           className="btn btn-green"
           style={{
             animation: 'fadeUp 0.4s ease 0.2s both',
-            opacity: (!preview || !titel.trim()) ? 0.5 : 1,
+            opacity: (!preview || !titel.trim() || !file) ? 0.5 : 1,
           }}
         >
           {loading ? 'Uploaden...' : "Foto Uploaden"}
         </button>
+
+        {error && (
+          <div style={{
+            background: 'rgba(80,0,0,0.35)',
+            border: '1.5px solid rgba(255,100,100,0.5)',
+            borderRadius: 12,
+            padding: '14px 16px',
+            textAlign: 'center',
+            color: 'rgba(255,200,200,0.95)',
+          }}>
+            {error}
+          </div>
+        )}
 
         {/* Success */}
         {uploaded && (
