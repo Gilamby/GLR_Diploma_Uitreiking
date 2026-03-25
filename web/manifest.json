@@ -1,0 +1,9 @@
+{
+  "name": "GLR Diploma Uitreiking",
+  "short_name": "GLR Diploma",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#F8FAFC",
+  "theme_color": "#0A4D8C",
+  "description": "Diploma ceremony livestream and gallery platform."
+}
