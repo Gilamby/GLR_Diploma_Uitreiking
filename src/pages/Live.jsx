@@ -4,12 +4,9 @@ import Header from '../components/Header';
 import { useAuth } from '../context/AuthContext';
 
 const initialMessages = [
-  { user: 'Leerling', text: 'Hallo allemaal! 🎓', time: '14:02' },
-  { user: 'Docent',   text: 'Hoi iedereen, welkom bij de uitreiking!', time: '14:03' },
-  { user: 'Familie',  text: 'Super trots op jullie! 🥳', time: '14:04' },
+  { user: 'Systeem', text: 'De chat wordt live gemoderate door admins. Gebruik alstublieft respectvolle taal.', time: '00:00' },
 ];
 
-// Replace with your actual Vimeo embed URL
 const VIMEO_EMBED = 'https://player.vimeo.com/video/76979871?autoplay=0';
 
 export default function Live() {
