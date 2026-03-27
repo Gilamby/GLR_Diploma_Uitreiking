@@ -1,12 +1,23 @@
 @import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@300;400;500;600;700&family=Orbitron:wght@700;900&display=swap');
 
 :root {
-  --green: #7fff00;
-  --green-dark: #4db800;
+  --green: #7efc00;
+  --green-dark: #57d100;
   --green-dim: rgba(127, 255, 0, 0.15);
   --green-border: rgba(127, 255, 0, 0.5);
   --black: #000000;
   --bg: #060e00;
+
+
+
+
+
+
+
+
+
+
+  
   --bg-card: rgba(0, 30, 0, 0.85);
   --bg-card2: rgba(10, 40, 0, 0.9);
   --gold: #c8960c;
