@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
 import Header from '../components/Header';
@@ -12,11 +12,37 @@ export default function PhotoUpload() {
 
   const [preview, setPreview] = useState(null);
   const [titel, setTitel] = useState('');
-  const [klas, setKlas] = useState('BEROEPS2');
+  const [klas, setKlas] = useState('');
+  const [classes, setClasses] = useState([]);
+  const [classesLoading, setClassesLoading] = useState(true);
   const [uploaded, setUploaded] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [validationError, setValidationError] = useState('');
   const [file, setFile] = useState(null);
+
+  // Load classes from API (same source as Photos page — not hardcoded)
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        const res = await api.classes();
+        if (!alive) return;
+        const list = res.classes || [];
+        setClasses(list);
+        if (list.length > 0) setKlas(list[0].name);
+      } catch {
+        // Fallback to common class names if API fails
+        const fallback = ['BEROEPS2', 'BEROEPS3', 'BEROEPS4', 'BEROEPS5'];
+        if (!alive) return;
+        setClasses(fallback.map((n, i) => ({ id: i, name: n })));
+        setKlas(fallback[0]);
+      } finally {
+        if (alive) setClassesLoading(false);
+      }
+    })();
+    return () => { alive = false; };
+  }, []);
 
   // Redirect non-admins
   if (!isAdmin) {
@@ -33,30 +59,45 @@ export default function PhotoUpload() {
   }
 
   function handleFileChange(e) {
-    const file = e.target.files[0];
-    if (!file) return;
-    setFile(file);
+    const f = e.target.files[0];
+    if (!f) return;
+    setFile(f);
     const reader = new FileReader();
     reader.onload = (ev) => setPreview(ev.target.result);
-    reader.readAsDataURL(file);
+    reader.readAsDataURL(f);
     setUploaded(false);
     setError('');
+    setValidationError('');
   }
 
   function handleDrop(e) {
     e.preventDefault();
-    const file = e.dataTransfer.files[0];
-    if (!file) return;
-    setFile(file);
+    const f = e.dataTransfer.files[0];
+    if (!f) return;
+    setFile(f);
     const reader = new FileReader();
     reader.onload = (ev) => setPreview(ev.target.result);
-    reader.readAsDataURL(file);
+    reader.readAsDataURL(f);
     setUploaded(false);
     setError('');
+    setValidationError('');
+  }
+
+  // Validate and return first missing field message, or empty string if all ok
+  function validate() {
+    if (!file || !preview) return 'Selecteer eerst een foto om te uploaden.';
+    if (!titel.trim()) return 'Vul een titel in voor de foto.';
+    if (!klas) return 'Kies een examenklas.';
+    return '';
   }
 
   async function handleSubmit() {
-    if (!file || !preview || !titel.trim()) return;
+    const msg = validate();
+    if (msg) {
+      setValidationError(msg);
+      return;
+    }
+    setValidationError('');
     setLoading(true);
     try {
       await api.uploadPhoto({ file, titel, klas });
@@ -81,6 +122,7 @@ export default function PhotoUpload() {
       />
 
       <div style={{ padding: '8px 16px 32px', display: 'flex', flexDirection: 'column', gap: 20 }}>
+
         {/* Upload zone */}
         <div
           className="card"
@@ -96,6 +138,10 @@ export default function PhotoUpload() {
             position: 'relative',
             overflow: 'hidden',
             animation: 'fadeUp 0.4s ease both',
+            // Highlight border red if validation failed on file
+            border: validationError && (!file || !preview)
+              ? '1.5px solid rgba(255,100,100,0.7)'
+              : undefined,
           }}
         >
           {preview ? (
@@ -125,55 +171,96 @@ export default function PhotoUpload() {
         {/* Titel field */}
         <div style={{ animation: 'fadeUp 0.4s ease 0.1s both' }}>
           <label style={{ display: 'block', color: 'var(--green)', fontWeight: 600, marginBottom: 8, fontSize: 15 }}>
-            Upload
+            Titel
           </label>
           <input
             type="text"
-            placeholder="Titel"
+            placeholder="Bijv. Diploma-uitreiking klas 4B"
             value={titel}
-            onChange={(e) => setTitel(e.target.value)}
+            onChange={(e) => {
+              setTitel(e.target.value);
+              if (validationError) setValidationError('');
+            }}
+            style={{
+              border: validationError && !titel.trim()
+                ? '1.5px solid rgba(255,100,100,0.7)'
+                : undefined,
+            }}
           />
         </div>
 
-        {/* Klas selector */}
+        {/* Klas selector — loaded from API */}
         <div style={{ animation: 'fadeUp 0.4s ease 0.15s both' }}>
           <label style={{ display: 'block', color: 'var(--green)', fontWeight: 600, marginBottom: 8, fontSize: 15 }}>
             Examenklas
           </label>
-          <select
-            value={klas}
-            onChange={(e) => setKlas(e.target.value)}
-            style={{
+          {classesLoading ? (
+            <div style={{
               background: 'rgba(0,60,0,0.4)',
               border: '1.5px solid var(--green-border)',
               borderRadius: 8,
-              color: 'var(--green)',
-              fontFamily: 'var(--font-main)',
-              fontSize: 16,
               padding: '12px 16px',
-              width: '100%',
-              outline: 'none',
-            }}
-          >
-            {['BEROEPS2', 'BEROEPS3', 'BEROEPS4', 'BEROEPS5'].map(k => (
-              <option key={k} value={k}>{k}</option>
-            ))}
-          </select>
+              color: 'var(--text-dim)',
+              fontSize: 14,
+            }}>
+              Klassen laden...
+            </div>
+          ) : (
+            <select
+              value={klas}
+              onChange={(e) => setKlas(e.target.value)}
+              style={{
+                background: 'rgba(0,60,0,0.4)',
+                border: '1.5px solid var(--green-border)',
+                borderRadius: 8,
+                color: 'var(--green)',
+                fontFamily: 'var(--font-main)',
+                fontSize: 16,
+                padding: '12px 16px',
+                width: '100%',
+                outline: 'none',
+              }}
+            >
+              {classes.map(c => (
+                <option key={c.id} value={c.name}>{c.name}</option>
+              ))}
+            </select>
+          )}
         </div>
 
-        {/* Submit */}
+        {/* Validation error — shown when user tries to submit with missing fields */}
+        {validationError && (
+          <div style={{
+            background: 'rgba(80,0,0,0.35)',
+            border: '1.5px solid rgba(255,100,100,0.5)',
+            borderRadius: 12,
+            padding: '12px 16px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 10,
+            animation: 'fadeUp 0.3s ease both',
+          }}>
+            <span style={{ fontSize: 18 }}>⚠</span>
+            <p style={{ color: 'rgba(255,200,200,0.95)', fontSize: 14 }}>
+              {validationError}
+            </p>
+          </div>
+        )}
+
+        {/* Submit button */}
         <button
           onClick={handleSubmit}
-          disabled={!preview || !titel.trim() || !file || loading}
+          disabled={loading}
           className="btn btn-green"
           style={{
             animation: 'fadeUp 0.4s ease 0.2s both',
-            opacity: (!preview || !titel.trim() || !file) ? 0.5 : 1,
+            opacity: loading ? 0.7 : 1,
           }}
         >
-          {loading ? 'Uploaden...' : "Foto Uploaden"}
+          {loading ? 'Uploaden...' : 'Foto Uploaden'}
         </button>
 
+        {/* API error */}
         {error && (
           <div style={{
             background: 'rgba(80,0,0,0.35)',
@@ -183,7 +270,8 @@ export default function PhotoUpload() {
             textAlign: 'center',
             color: 'rgba(255,200,200,0.95)',
           }}>
-            {error}
+            <p style={{ fontWeight: 600, marginBottom: 4 }}>Upload mislukt</p>
+            <p style={{ fontSize: 13 }}>{error}</p>
           </div>
         )}
 
@@ -197,7 +285,23 @@ export default function PhotoUpload() {
             textAlign: 'center',
             animation: 'fadeUp 0.3s ease both',
           }}>
-            <p style={{ fontWeight: 600 }}>✅ Foto succesvol geüpload!</p>
+            <p style={{ fontWeight: 600, fontSize: 15 }}>✅ Foto succesvol geüpload!</p>
+            <button
+              onClick={() => navigate('/fotos')}
+              style={{
+                marginTop: 12,
+                background: 'none',
+                border: '1px solid var(--green-border)',
+                borderRadius: 8,
+                color: 'var(--green)',
+                padding: '8px 20px',
+                cursor: 'pointer',
+                fontFamily: 'var(--font-main)',
+                fontSize: 14,
+              }}
+            >
+              Bekijk alle foto's →
+            </button>
           </div>
         )}
       </div>

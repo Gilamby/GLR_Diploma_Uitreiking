@@ -22,12 +22,31 @@ function HeartIcon({ filled }) {
   );
 }
 
+// Spinner component reused across pages
+function Spinner() {
+  return (
+    <div style={{ padding: '48px 0', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 16 }}>
+      <div style={{
+        width: 40,
+        height: 40,
+        border: '3px solid var(--green-border)',
+        borderTopColor: 'var(--green)',
+        borderRadius: '50%',
+        animation: 'spin 0.8s linear infinite',
+      }} />
+      <p style={{ color: 'var(--text-dim)', fontSize: 14 }}>Foto's laden...</p>
+      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+    </div>
+  );
+}
+
 export default function Photos() {
   const navigate = useNavigate();
   const { isAdmin } = useAuth();
   const [fotos, setFotos] = useState([]);
   const [classes, setClasses] = useState([]);
   const [selectedKlas, setSelectedKlas] = useState('');
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
   const visibleFotos = useMemo(() => {
@@ -38,6 +57,7 @@ export default function Photos() {
   useEffect(() => {
     let alive = true;
     (async () => {
+      setLoading(true);
       try {
         const [cls, ph] = await Promise.all([api.classes(), api.photos()]);
         if (!alive) return;
@@ -46,6 +66,8 @@ export default function Photos() {
       } catch (e) {
         if (!alive) return;
         setError(e?.message || "Kon foto's niet laden.");
+      } finally {
+        if (alive) setLoading(false);
       }
     })();
     return () => { alive = false; };
@@ -98,11 +120,104 @@ export default function Photos() {
           </select>
         </div>
 
+        {/* Error state */}
         {error && (
-          <p style={{ color: 'var(--text-dim)', textAlign: 'center' }}>{error}</p>
+          <div style={{
+            background: 'rgba(80,0,0,0.35)',
+            border: '1.5px solid rgba(255,100,100,0.5)',
+            borderRadius: 12,
+            padding: '16px',
+            textAlign: 'center',
+            color: 'rgba(255,200,200,0.95)',
+          }}>
+            <p style={{ fontWeight: 600, marginBottom: 4 }}>⚠ Fout bij laden</p>
+            <p style={{ fontSize: 13 }}>{error}</p>
+            <button
+              onClick={() => window.location.reload()}
+              style={{
+                marginTop: 12,
+                background: 'none',
+                border: '1px solid rgba(255,100,100,0.5)',
+                borderRadius: 6,
+                color: 'rgba(255,200,200,0.8)',
+                padding: '6px 16px',
+                cursor: 'pointer',
+                fontSize: 13,
+              }}
+            >
+              Opnieuw proberen
+            </button>
+          </div>
         )}
 
-        {visibleFotos.map((foto, i) => (
+        {/* Loading state */}
+        {loading && <Spinner />}
+
+        {/* Empty state — no photos at all */}
+        {!loading && !error && fotos.length === 0 && (
+          <div style={{
+            padding: '56px 24px',
+            textAlign: 'center',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: 12,
+            animation: 'fadeUp 0.4s ease both',
+          }}>
+            <span style={{ fontSize: 48 }}>📷</span>
+            <p style={{ fontWeight: 700, fontSize: 18, color: 'var(--green)' }}>Nog geen foto's</p>
+            <p style={{ color: 'var(--text-dim)', fontSize: 14 }}>
+              Er zijn nog geen foto's geüpload voor de uitreiking.
+            </p>
+            {isAdmin && (
+              <button
+                onClick={() => navigate('/upload')}
+                className="btn btn-green"
+                style={{ marginTop: 8, width: 'auto', padding: '12px 28px' }}
+              >
+                Eerste foto uploaden
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* Empty state — filter has no results */}
+        {!loading && !error && fotos.length > 0 && visibleFotos.length === 0 && (
+          <div style={{
+            padding: '40px 24px',
+            textAlign: 'center',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: 10,
+            animation: 'fadeUp 0.4s ease both',
+          }}>
+            <span style={{ fontSize: 36 }}>🔍</span>
+            <p style={{ fontWeight: 600, color: 'var(--green)' }}>Geen foto's voor deze klas</p>
+            <p style={{ color: 'var(--text-dim)', fontSize: 13 }}>
+              Kies een andere klas of bekijk alle foto's.
+            </p>
+            <button
+              onClick={() => setSelectedKlas('')}
+              style={{
+                marginTop: 4,
+                background: 'none',
+                border: '1.5px solid var(--green-border)',
+                borderRadius: 8,
+                color: 'var(--green)',
+                padding: '8px 20px',
+                cursor: 'pointer',
+                fontFamily: 'var(--font-main)',
+                fontSize: 14,
+              }}
+            >
+              Alle klassen tonen
+            </button>
+          </div>
+        )}
+
+        {/* Photo cards */}
+        {!loading && visibleFotos.map((foto, i) => (
           <div
             key={foto.id}
             className="card"
@@ -180,18 +295,20 @@ export default function Photos() {
         ))}
 
         {/* Map card */}
-        <div className="card" style={{ overflow: 'hidden', animation: `fadeUp 0.4s ease ${visibleFotos.length * 0.07}s both` }}>
-          <div style={{ padding: '14px 16px', borderBottom: '1px solid var(--green-border)' }}>
-            <p style={{ fontWeight: 600, fontSize: 15 }}>Grafisch Lyceum Rotterdam</p>
-            <p style={{ color: 'var(--text-dim)', fontSize: 13 }}>Heer Bokelweg 255, 3032 AA Rotterdam</p>
+        {!loading && (
+          <div className="card" style={{ overflow: 'hidden', animation: `fadeUp 0.4s ease ${visibleFotos.length * 0.07}s both` }}>
+            <div style={{ padding: '14px 16px', borderBottom: '1px solid var(--green-border)' }}>
+              <p style={{ fontWeight: 600, fontSize: 15 }}>Grafisch Lyceum Rotterdam</p>
+              <p style={{ color: 'var(--text-dim)', fontSize: 13 }}>Heer Bokelweg 255, 3032 AA Rotterdam</p>
+            </div>
+            <iframe
+              title="GLR locatie"
+              src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d2461.0!2d4.461!3d51.922!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x47c434a1bc9a5d53%3A0x7bce9bb3e3fe0b54!2sGrafisch%20Lyceum%20Rotterdam!5e0!3m2!1snl!2snl!4v1"
+              style={{ width: '100%', height: 200, border: 'none', display: 'block' }}
+              loading="lazy"
+            />
           </div>
-          <iframe
-            title="GLR locatie"
-            src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d2461.0!2d4.461!3d51.922!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x47c434a1bc9a5d53%3A0x7bce9bb3e3fe0b54!2sGrafisch%20Lyceum%20Rotterdam!5e0!3m2!1snl!2snl!4v1"
-            style={{ width: '100%', height: 200, border: 'none', display: 'block' }}
-            loading="lazy"
-          />
-        </div>
+        )}
       </div>
     </Layout>
   );
